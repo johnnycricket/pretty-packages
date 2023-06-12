@@ -1,7 +1,8 @@
 import {getPackageLicense} from "./metadataRetriever";
 
 export type Options = {
-    includeDevDependencies?: boolean
+    includeDevDependencies?: boolean,
+    includePeerDependencies?: boolean,
     includeVersion?: boolean
     includeUrl?: boolean
     includeLicense?: boolean
@@ -42,6 +43,17 @@ const getTableObject = async (packageJsonContent: string, options: Options): Pro
                 console.warn('No devDependencies found in package.json')
             }
         }
+        
+        if (options.includePeerDependencies) {
+            if (packageJson.devDependencies) {
+                devDependencies.push(...Object.keys(packageJson.peerDependencies))
+                table.name.push(...devDependencies)
+                // table.type = table.name.map(name => devDependencies.includes(name) ? 'dev' : 'prod')
+            } else {
+                console.warn('No devDependencies found in package.json')
+            }
+        }
+
 
         if (options.includeVersion) {
             table.version = table.name.map(name => packageJson.dependencies[name] || packageJson.devDependencies[name])
