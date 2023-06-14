@@ -2,20 +2,9 @@ import { Options } from "../options/Options";
 import { getLicense } from "../options/getLicense";
 import { getUrl } from "../options/getUrl";
 import { getVersion } from "../options/getVersion";
-
-export type Totals = {
-    repo?: string,
-    tableObjects: TableObject[]
-}
-
-export type TableObject = {
-    depLevel: string
-    name: string
-    type?: ('prod' | 'dev')
-    version?: string
-    license?: string
-    url?: string
-}
+import { TableObject, Totals } from "../tabletypes/tableTypes";
+import { getMarkdownTable } from "../table/markdownTableGen";
+import { getCsvTable } from "../table/csvTableGen";
 
 export const translate = async (packageJsonContent: string, options: Options): Promise<string> => {
     const packageJson = JSON.parse(packageJsonContent)
@@ -107,33 +96,4 @@ const getTable = (allDeps: Totals, options: Options): string => {
     } else {
         return getCsvTable(allDeps, options)
     }
-}
-
-const filterEmpty = (value: string | undefined) => {
-    return value !== undefined;
-}
-
-const getMarkdownTable = (allDeps: Totals, options: Options): string => {
-    const header = ` | repo | ${Object.keys(allDeps.tableObjects[0]).join(' | ')} | `
-    const separator = ` | --- | ${Object.keys(allDeps.tableObjects[0]).map(() => '---').join(' | ')} | `
-    const tableObjs: TableObject[] = allDeps.tableObjects;
-    const rowItems: string[][] = tableObjs.map(item => {
-        const bits = Object.values(item);
-        return bits.filter(filterEmpty);
-    });
-        
-    const rows: string[] = rowItems.map((row) => { 
-        return ` | ${allDeps.repo} | ${row.join(' | ')} | `
-    });
-        
-    return [header, separator, ...rows].join('\n')
-}
-
-const getCsvTable = (allDeps: Totals, options: Options): string => {
-    const header = Object.keys(allDeps.tableObjects).join(',')
-    const rows = allDeps.tableObjects.map((item, index) => {
-        const row = Object.values(item).map(value => value[index])
-        return row.join(',')
-    })
-    return [header, ...rows].join('\n')
 }
