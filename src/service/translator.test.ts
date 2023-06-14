@@ -1,4 +1,5 @@
-import {Options, translate} from "./translator";
+import {translate} from "./translator";
+import { Options } from "../options/Options";
 
 describe('translator tests', () => {
     const packageJsonContent =

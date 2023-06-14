@@ -1,102 +1,138 @@
-import {getPackageLicense} from "./metadataRetriever";
+import { Options } from "../options/Options";
+import { getLicense } from "../options/getLicense";
+import { getUrl } from "../options/getUrl";
+import { getVersion } from "../options/getVersion";
 
-export type Options = {
-    includeDevDependencies?: boolean,
-    includePeerDependencies?: boolean,
-    includeVersion?: boolean
-    includeUrl?: boolean
-    includeLicense?: boolean
-    markdown?: boolean
+export type Totals = {
+    repo?: string,
+    tableObjects: TableObject[]
 }
 
 export type TableObject = {
-    name: string[]
-    type?: ('prod' | 'dev')[]
-    version?: string[]
-    license?: string[]
-    url?: string[]
+    depLevel: string
+    name: string
+    type?: ('prod' | 'dev')
+    version?: string
+    license?: string
+    url?: string
 }
 
 export const translate = async (packageJsonContent: string, options: Options): Promise<string> => {
-    const tableObject = await getTableObject(packageJsonContent, options)
-    if (tableObject === false) {
+    const packageJson = JSON.parse(packageJsonContent)
+    const tableObjects = await getTableObject(packageJsonContent, options)
+    const allDeps: Totals = {
+        repo: packageJson.name,
+        tableObjects
+    };
+    
+    if (allDeps.tableObjects.length < 1) {
         return 'Could not parse package.json'
     }
-    return getTable(tableObject as TableObject, options)
+    
+    return getTable(allDeps, options)
 }
 
-const getTableObject = async (packageJsonContent: string, options: Options): Promise<TableObject | boolean> => {
+const getTableObject = async (packageJsonContent: string, options: Options): Promise<TableObject[]> => {
     try {
         const packageJson = JSON.parse(packageJsonContent)
 
-        const dependencies: string[] = Object.keys(packageJson.dependencies)
-        const devDependencies: string[] = []
+        const dependencies: string[] = Object.keys(packageJson.dependencies);
+        const devDependencies: string[] = packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [];
+        const peerDependencies: string[] = packageJson.peerDependencies ? Object.keys(packageJson.peerDependencies) : [];
 
-        const table: TableObject = {name: dependencies}
+        const tableDeps: TableObject[] = await Promise.all(dependencies.map(async (item, i) => {
+            const version = getVersion(options, packageJson.dependencies[item]);
+            const url = getUrl(options, dependencies[i]);
+            const license = await getLicense(options, dependencies[i]);
+            return {
+                depLevel: '',
+                name: dependencies[i],
+                version,
+                url,
+                license
+            } as TableObject;
+        }));
 
-        if (options.includeDevDependencies) {
-            if (packageJson.devDependencies) {
-                devDependencies.push(...Object.keys(packageJson.devDependencies))
-                table.name.push(...devDependencies)
-                // table.type = table.name.map(name => devDependencies.includes(name) ? 'dev' : 'prod')
-            } else {
-                console.warn('No devDependencies found in package.json')
+        const tableDevDeps: TableObject[] = await Promise.all(devDependencies.map(async (item, i) => {
+            if (!options.includeDevDependencies && !packageJson.devDependencies) {
+                return {
+                    name: 'filter'
+                } as TableObject
             }
-        }
+            const version = getVersion(options, packageJson.devDependencies[item]);
+            const url = getUrl(options, devDependencies[i]);
+            const license: string | undefined = await getLicense(options, devDependencies[i]);
+            
+            return {
+                depLevel: 'Dev',
+                name: devDependencies[i],
+                version,
+                url,
+                license
+            } as TableObject;
+        }));
+
+        const tablePeerDeps: TableObject[] = await Promise.all(peerDependencies.map(async (item, i) => {
+            if (!options.includePeerDependencies && !packageJson.peerDependencies) {
+                return {
+                    name: 'filter'
+                } as TableObject
+            }
+            const version = getVersion(options, packageJson.peerDependencies[item]);
+            const url = getUrl(options, peerDependencies[i]);
+            const license = await getLicense(options, peerDependencies[i]);
+            return {
+                depLevel: 'Peer',
+                name: peerDependencies[i],
+                version,
+                url,
+                license
+            } as TableObject;
+        }));
         
-        if (options.includePeerDependencies) {
-            if (packageJson.devDependencies) {
-                devDependencies.push(...Object.keys(packageJson.peerDependencies))
-                table.name.push(...devDependencies)
-                // table.type = table.name.map(name => devDependencies.includes(name) ? 'dev' : 'prod')
-            } else {
-                console.warn('No devDependencies found in package.json')
-            }
-        }
-
-
-        if (options.includeVersion) {
-            table.version = table.name.map(name => packageJson.dependencies[name] || packageJson.devDependencies[name])
-        }
-
-        if (options.includeUrl) {
-            table.url = table.name.map(name => `https://www.npmjs.com/package/${name}`)
-        }
-
-        if (options.includeLicense) {
-            const licensePromises = table.name.map(name => getPackageLicense(name))
-            table.license = await Promise.all(licensePromises)
-        }
-
-        return table
+        const allTableObjects = tableDeps.concat(tableDevDeps, tablePeerDeps);
+        
+        return allTableObjects;
     } catch (e) {
         console.error('Could not parse package.json')
-        return false
+        const empty: TableObject[] = []
+        
+        return empty;
     }
 }
 
-const getTable = (tableObject: TableObject, options: Options): string => {
+const getTable = (allDeps: Totals, options: Options): string => {
     if (options.markdown) {
-        return getMarkdownTable(tableObject)
+        return getMarkdownTable(allDeps, options)
     } else {
-        return getCsvTable(tableObject)
+        return getCsvTable(allDeps, options)
     }
 }
 
-const getMarkdownTable = (tableObject: TableObject): string => {
-    const header = ` |  ${Object.keys(tableObject).join(' | ')}  | `
-    const separator = ` | ${Object.keys(tableObject).map(() => '---').join(' | ')} | `
-    const rows = tableObject.name.map((name, index) => {
-        const row = Object.values(tableObject).map(value => value[index])
-        return ` | ${row.join(' | ')} | `
-    })
+const filterEmpty = (value: string | undefined) => {
+    return value !== undefined;
+}
+
+const getMarkdownTable = (allDeps: Totals, options: Options): string => {
+    const header = ` | repo | ${Object.keys(allDeps.tableObjects[0]).join(' | ')} | `
+    const separator = ` | --- | ${Object.keys(allDeps.tableObjects[0]).map(() => '---').join(' | ')} | `
+    const tableObjs: TableObject[] = allDeps.tableObjects;
+    const rowItems: string[][] = tableObjs.map(item => {
+        const bits = Object.values(item);
+        return bits.filter(filterEmpty);
+    });
+        
+    const rows: string[] = rowItems.map((row) => { 
+        return ` | ${allDeps.repo} | ${row.join(' | ')} | `
+    });
+        
     return [header, separator, ...rows].join('\n')
 }
 
-const getCsvTable = (tableObject: TableObject): string => {
-    const header = Object.keys(tableObject).join(',')
-    const rows = tableObject.name.map((name, index) => {
-        const row = Object.values(tableObject).map(value => value[index])
+const getCsvTable = (allDeps: Totals, options: Options): string => {
+    const header = Object.keys(allDeps.tableObjects).join(',')
+    const rows = allDeps.tableObjects.map((item, index) => {
+        const row = Object.values(item).map(value => value[index])
         return row.join(',')
     })
     return [header, ...rows].join('\n')
