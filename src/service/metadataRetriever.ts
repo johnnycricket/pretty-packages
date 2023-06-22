@@ -11,7 +11,7 @@ export const getPackageLicense = async (packageName: string): Promise<string> =>
         )
         return response.data.license || ''
     } catch (err: any) {
-        console.error(`Error fetching license for package '${packageName}': ${err.message}`)
-        return ''
+        console.log(`Error fetching license for package '${packageName}': ${err.message}`)
+        return Promise.reject(`Error fetching license for package '${packageName}': ${err.message}`)
     }
 }

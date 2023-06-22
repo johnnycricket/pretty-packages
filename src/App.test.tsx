@@ -8,6 +8,6 @@ import App from './App';
 
 test('renders learn react Header', () => {
   render(<App />);
-  const hTwoElement = screen.getByText(/Pretty Package/gi);
+  const hTwoElement = screen.getByText(/Pretty Package/i);
   expect(hTwoElement).toBeTruthy();
 });
