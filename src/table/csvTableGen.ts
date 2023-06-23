@@ -1,5 +1,5 @@
 import { Options } from "../options/Options"
-import { Totals } from "../tabletypes/tableTypes"
+import { Totals } from "./tableTypes"
 
 export const getCsvTable = (allDeps: Totals, options: Options): string => {
     const header = Object.keys(allDeps.tableObjects).join(',')

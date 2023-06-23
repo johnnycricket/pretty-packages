@@ -1,5 +1,5 @@
 import { Options } from "../options/Options";
-import { TableObject, Totals } from "../tabletypes/tableTypes";
+import { TableObject, Totals } from "./tableTypes";
 import { filterEmpty } from "./filterEmpty";
 
 export const getMarkdownTable = (allDeps: Totals, options: Options): string => {

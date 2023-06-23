@@ -2,7 +2,7 @@ import { Options } from "../options/Options";
 import { getLicense } from "../options/getLicense";
 import { getUrl } from "../options/getUrl";
 import { getVersion } from "../options/getVersion";
-import { TableObject, Totals } from "../tabletypes/tableTypes";
+import { TableObject, Totals } from "../table/tableTypes";
 import { getMarkdownTable } from "../table/markdownTableGen";
 import { getCsvTable } from "../table/csvTableGen";
 
