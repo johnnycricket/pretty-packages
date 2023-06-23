@@ -1,9 +1,13 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders learn react Header', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const hTwoElement = screen.getByText(/Pretty Package/i);
+  expect(hTwoElement).toBeTruthy();
 });

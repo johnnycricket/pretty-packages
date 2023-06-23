@@ -12,7 +12,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import styles from './Main.module.scss'
 
-import {Options, translate} from "../service/translator";
+import {translate} from "../service/translator";
+import { Options } from "../options/Options";
 
 export const MainView: React.FC = () => {
     const defaultOptions: Options = {
@@ -66,6 +67,13 @@ export const MainView: React.FC = () => {
                                     includeDevDependencies: e.target.checked
                                 })}/>}
                                 label="Include dev dependencies"
+                            />
+                            <FormControlLabel
+                                control={<Checkbox checked={options.includePeerDependencies} onChange={e => setOptions({
+                                    ...options,
+                                    includePeerDependencies: e.target.checked
+                                })}/>}
+                                label="Include peer dependencies"
                             />
                             <FormControlLabel
                                 control={<Checkbox checked={options.includeVersion} onChange={e => setOptions({
